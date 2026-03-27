@@ -1,0 +1,13 @@
+{
+  "pattern": "BondSettlement",
+  "steps": [
+    { "action": "Approve", "role": "Bond", "by": "Issuer" },
+    { "action": "Lock", "role": "Cash", "by": "Investor" },
+    { "action": "Claim", "role": "Bond", "by": "Investor" },
+    { "action": "Release", "role": "Cash", "by": "Investor" }
+  ],
+  "bindings": {
+    "Bond": "Bond",
+    "Cash": "Payment"
+  }
+}

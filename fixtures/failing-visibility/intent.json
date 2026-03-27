@@ -1,0 +1,13 @@
+{
+  "pattern": "DvP",
+  "steps": [
+    { "action": "Lock", "role": "Asset", "by": "BankA" },
+    { "action": "Lock", "role": "Cash", "by": "BankB" },
+    { "action": "Transfer", "role": "Asset", "by": "BankB" },
+    { "action": "Release", "role": "Cash", "by": "BankB" }
+  ],
+  "bindings": {
+    "Asset": "Asset",
+    "Cash": "CashToken"
+  }
+}

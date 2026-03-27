@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "templates": [
+    {
+      "name": "Bond",
+      "packageId": "bond-pkg",
+      "signatories": ["Issuer"],
+      "observers": ["Investor"],
+      "choices": [
+        { "name": "Approve", "controllers": ["Issuer"], "consuming": false },
+        { "name": "Claim", "controllers": ["Investor"], "consuming": true }
+      ]
+    },
+    {
+      "name": "Payment",
+      "packageId": "payment-pkg",
+      "signatories": ["Investor"],
+      "observers": ["Issuer"],
+      "choices": [
+        { "name": "Lock", "controllers": ["Investor"], "consuming": false },
+        { "name": "Release", "controllers": ["Investor"], "consuming": true }
+      ]
+    }
+  ]
+}

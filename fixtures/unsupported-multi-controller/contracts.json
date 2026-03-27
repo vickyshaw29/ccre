@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "templates": [
+    {
+      "name": "Asset",
+      "packageId": "asset-pkg",
+      "signatories": ["BankA"],
+      "observers": ["Custodian"],
+      "choices": [
+        { "name": "Lock", "controllers": ["BankA"], "consuming": false },
+        { "name": "Transfer", "controllers": ["BankA", "Custodian"], "consuming": true }
+      ]
+    },
+    {
+      "name": "CashToken",
+      "packageId": "cash-pkg",
+      "signatories": ["BankB"],
+      "observers": ["Custodian"],
+      "choices": [
+        { "name": "Lock", "controllers": ["BankB"], "consuming": false },
+        { "name": "Release", "controllers": ["BankB"], "consuming": true }
+      ]
+    }
+  ]
+}
