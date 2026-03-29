@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "templates": [
+    {
+      "name": "Bond",
+      "packageId": "bond-pkg",
+      "signatories": ["Issuer"],
+      "observers": ["Investor", "Regulator"],
+      "choices": [
+        { "name": "Settle", "controllers": ["Issuer"], "consuming": true },
+        { "name": "Claim", "controllers": ["Investor"], "consuming": false }
+      ]
+    },
+    {
+      "name": "Trade",
+      "packageId": "trade-pkg",
+      "signatories": ["Broker"],
+      "observers": ["Investor", "Regulator"],
+      "choices": [
+        { "name": "Execute", "controllers": ["Broker"], "consuming": true },
+        { "name": "Confirm", "controllers": ["Investor"], "consuming": false }
+      ]
+    }
+  ]
+}

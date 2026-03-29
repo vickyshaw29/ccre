@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "domains": [
+    { "id": "issuanceDomain" },
+    { "id": "settlementDomain" }
+  ],
+  "participants": [
+    {
+      "id": "issuerNode",
+      "domains": ["issuanceDomain"],
+      "parties": ["Issuer"]
+    },
+    {
+      "id": "investorNode",
+      "domains": ["issuanceDomain", "settlementDomain"],
+      "parties": ["Investor"]
+    },
+    {
+      "id": "brokerNode",
+      "domains": ["settlementDomain"],
+      "parties": ["Broker"]
+    },
+    {
+      "id": "regulatorNode",
+      "domains": ["issuanceDomain"],
+      "parties": ["Regulator"]
+    }
+  ]
+}

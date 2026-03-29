@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { ContractModelSchema, type ContractModel } from "../schemas/contract.schema.js";
 import { WorkflowIntentSchema, type WorkflowIntent } from "../schemas/intent.schema.js";
+import { TopologyConfigSchema, type TopologyConfig } from "../schemas/topology.schema.js";
 import { EXIT_CODES } from "../types.js";
 
 export class CcreError extends Error {
@@ -91,6 +92,18 @@ export function parseWorkflowIntent(path: string): WorkflowIntent {
   if (!result.success) {
     const issues = result.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
     throw new CcreError(EXIT_CODES.INPUT_ERROR, `Intent schema validation failed:\n${issues}`);
+  }
+
+  return result.data;
+}
+
+export function parseTopologyConfig(path: string): TopologyConfig {
+  const data = readJsonFile(path);
+  const result = TopologyConfigSchema.safeParse(data);
+
+  if (!result.success) {
+    const issues = result.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
+    throw new CcreError(EXIT_CODES.INPUT_ERROR, `Topology config validation failed:\n${issues}`);
   }
 
   return result.data;

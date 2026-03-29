@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "templates": [
+    {
+      "name": "Bond",
+      "packageId": "bond-pkg",
+      "signatories": ["Issuer"],
+      "observers": ["Investor"],
+      "choices": [
+        { "name": "Settle", "controllers": ["Issuer"], "consuming": true },
+        { "name": "Claim", "controllers": ["Investor"], "consuming": false }
+      ]
+    }
+  ]
+}

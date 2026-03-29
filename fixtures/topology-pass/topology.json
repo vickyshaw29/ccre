@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "domains": [
+    { "id": "issuanceDomain" },
+    { "id": "settlementDomain" }
+  ],
+  "participants": [
+    {
+      "id": "issuerNode",
+      "domains": ["issuanceDomain", "settlementDomain"],
+      "parties": ["Issuer"]
+    },
+    {
+      "id": "investorNode",
+      "domains": ["issuanceDomain", "settlementDomain"],
+      "parties": ["Investor"]
+    }
+  ]
+}
