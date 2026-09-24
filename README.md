@@ -1,24 +1,22 @@
 # CCRE — Canton Composition Reasoning Engine
 
-Topology-aware protocol safety checker for Canton multi-domain deployments.
+Pre-flight checker for Canton multi-synchronizer deployments.
 
-Canton guarantees correctness of execution within a single domain, but not correctness of composition across domains. When Daml workflows span multiple synchronizers, failures emerge that are invisible at the code level — they only surface at runtime when topology configuration violates Canton protocol constraints.
+A Canton transaction executes on exactly one synchronizer, and only if every stakeholder of its contracts is hosted there, every package is vetted, and every input can be reassigned to it. Workflows that pass on a single synchronizer can therefore be rejected at runtime once they are deployed across several — a failure that is invisible in the code and depends on the deployment topology.
 
-CCRE analyzes Daml contract interfaces together with multi-domain topology configuration to detect these failures before deployment. No running Canton node or active ledger connection is required.
+CCRE analyzes Daml contract interfaces together with a synchronizer topology to detect these failures before deployment. No running Canton node or active ledger connection is required.
 
-**Currently implemented (M1):**
+> Canton 3.3 renamed "domain" to "synchronizer", and CCRE uses the new term throughout. Topology files written for CCRE 0.1 with `domains` fields are still accepted.
 
-- **CCRE-003: Stakeholder hosting validation** (CRITICAL) — Checks that all stakeholders (signatories and observers) are hosted on every domain where a template may execute. Canton requires this for contract creation, key operations, and reassignment. Violations cause deterministic runtime failure.
+**What works today:**
+
+- **Synchronizer routing dry-run (`ccre route`)** — Predicts which synchronizer Canton's router will choose for a transaction and which inputs it will reassign, or reports why no synchronizer qualifies.
+- **CCRE-003: Stakeholder hosting validation** (CRITICAL) — Checks that every stakeholder (signatory and observer) is hosted on each synchronizer where a template can execute. A contract cannot be created on, or reassigned to, a synchronizer where one of its stakeholders is not hosted.
 - **Visibility validation** — Checks `actor ∈ (signatories ∪ observers)` for every workflow step.
 - **Authorization validation** — Checks `actor == choice.controller` for single-controller choices.
 - **Deterministic certificate generation** — SHA-256 reproducible proof of validation.
 
-**Planned for M2:**
-
-- CCRE-001: Cross-domain key ambiguity detection (`fetchByKey`/`exerciseByKey` resolving to wrong contract)
-- CCRE-010: Cross-domain contract reference risk (`ContractId` on different domain requiring reassignment)
-- Interaction graph construction with bounded 2-hop domain inference
-- Reference-level cross-suppression between checks
+Next steps are listed under [Roadmap](#roadmap).
 
 ## Prerequisites
 
@@ -31,21 +29,21 @@ CCRE analyzes Daml contract interfaces together with multi-domain topology confi
 npm install
 ```
 
-### Single-Domain Validation (Visibility + Authorization)
+### Workflow Validation (Visibility + Authorization)
 
 ```bash
 npx tsx src/cli.ts validate --schema fixtures/passing/contracts.json --intent fixtures/passing/intent.json
 ```
 
-### Multi-Domain Topology Analysis
+### Multi-Synchronizer Topology Analysis
 
 ```bash
 npx tsx src/cli.ts validate --schema fixtures/topology-blocked/contracts.json --topology fixtures/topology-blocked/topology.json
 ```
 
 ```
-CCRE v0.1.0 — Multi-domain topology analysis
-Analyzing: 2 templates across 2 domains
+CCRE v0.2.0 — Multi-synchronizer topology analysis
+Analyzing: 2 templates across 2 synchronizers
 
 DEPLOYMENT DECISION: BLOCKED
 
@@ -53,9 +51,9 @@ DEPLOYMENT DECISION: BLOCKED
 
 [CRITICAL] CCRE-003: Bond
   Party: Issuer
-  Domain: settlementDomain
-  Issue: Key maintainer "Issuer" is not hosted on execution domain "settlementDomain"
-  Impact: Key operations on Bond will fail on settlementDomain
+  Synchronizer: settlement-synchronizer
+  Issue: Signatory 'Issuer' not hosted on 'settlement-synchronizer'
+  Impact: 'Bond' cannot be created on or reassigned to 'settlement-synchronizer' — Canton requires every stakeholder to be hosted there
   Canton protocol: This operation WILL fail at runtime
 ```
 
@@ -63,7 +61,7 @@ Without CCRE, this misconfiguration would only surface as a failed transaction a
 
 ## Demo: BLOCKED → FIX → PASS
 
-**1. Run against a misconfigured multi-domain topology:**
+**1. Run against a misconfigured multi-synchronizer topology:**
 
 ```bash
 npx tsx src/cli.ts validate \
@@ -71,7 +69,7 @@ npx tsx src/cli.ts validate \
   --topology fixtures/topology-blocked/topology.json
 ```
 
-Issuer is hosted only on `issuanceDomain`, but Bond can execute on `settlementDomain` (via Investor). Canton requires all stakeholders to be hosted on every execution domain. CCRE catches this.
+Investor is hosted on both synchronizers, but Issuer only on `issuance-synchronizer`, so Bond can never be created on or reassigned to `settlement-synchronizer`. Any workflow that needs Bond there will be rejected. CCRE catches this.
 
 **2. Run against a correctly configured topology:**
 
@@ -84,11 +82,13 @@ npx tsx src/cli.ts validate \
 ```
 DEPLOYMENT DECISION: PASS
 
-All stakeholders are reachable on all execution domains.
-No multi-domain deployment risks detected.
+All checks passed across 2 synchronizers and 1 templates
+
+All stakeholders are hosted on every synchronizer where their contracts can execute.
+No multi-synchronizer deployment risks detected.
 ```
 
-**3. Single-domain FAIL → FIX → PASS cycle:**
+**3. Workflow FAIL → FIX → PASS cycle:**
 
 ```bash
 npx tsx src/cli.ts validate \
@@ -101,7 +101,7 @@ RESULT: UNSAFE (Visibility violation at step-3)
 
 [VISIBILITY] step-3: Claim on Bond
   Actor: Investor
-  Reason: Investor is not a signatory or observer of Bond
+  Reason: Investor is not a signatory or observer of Bond (signatories: [Issuer], observers: [])
   Fix: Modify Bond template definition to include Investor as observer
 ```
 
@@ -143,7 +143,7 @@ Canton will reject this submission. No synchronizer satisfies the routing constr
   ...
 ```
 
-The DSO party is hosted only by Super Validator nodes on the Global Synchronizer, so Canton Coin can never move to the private synchronizer. The only fix is for the bond issuer's participant to connect to the Global Synchronizer. With `topology-fixed.json`, CCRE confirms the route and the reassignment the router will perform:
+In this topology the DSO party is hosted only by the Super Validator nodes on the Global Synchronizer, so the Amulet allocation cannot move to the private synchronizer. The fix is for the bond issuer's participant to also connect to the Global Synchronizer. With `topology-fixed.json`, CCRE confirms the route and the reassignment the router will perform:
 
 ```
 ROUTING DECISION: ROUTABLE → global-synchronizer
@@ -154,11 +154,15 @@ Participants may list `vettedPackages`, in which case the dry-run also blocks sy
 
 ## What It Checks
 
-### Multi-Domain Topology Analysis (`--topology`)
+### Routing Dry-Run (`route`)
 
-**CCRE-003: Stakeholder Hosting** (CRITICAL) — Checks that all stakeholders (signatories and observers) are hosted on every domain where a template may execute. Three failure surfaces: key maintainer not on domain, signatory of created contract not on domain, observer blocking reassignment.
+Evaluates every synchronizer in the topology for one transaction: submitter hosting, stakeholder hosting, package vetting (when `vettedPackages` is given) and, for inputs located on another synchronizer, whether every stakeholder has a reassigning participant connected to both. Signatory confirmation thresholds for reassignment are not modelled yet.
 
-### Single-Domain Composition Validation
+### Multi-Synchronizer Topology Analysis (`validate --topology`)
+
+**CCRE-003: Stakeholder Hosting** (CRITICAL) — Checks that every stakeholder (signatory and observer) is hosted on each synchronizer where a template can execute. A contract cannot be created on, or reassigned to, a synchronizer where one of its stakeholders is not hosted.
+
+### Workflow Validation (`validate --intent`)
 
 **Visibility** — Can the actor see the target contract? Canton requires `actor ∈ (signatories ∪ observers)`.
 
@@ -167,25 +171,27 @@ Participants may list `vettedPackages`, in which case the dry-run also blocks sy
 ## CLI Usage
 
 ```bash
-npx tsx src/cli.ts validate --schema <path> --intent <path> [--topology <path>] [--json] [--cert <path>]
+npx tsx src/cli.ts validate --schema <path> (--intent <path> | --topology <path>) [--json] [--cert <path>]
+npx tsx src/cli.ts route --schema <path> --topology <path> --tx <path> [--json]
 ```
 
 | Flag | Required | Description |
 |------|----------|-------------|
 | `--schema` | yes | Path to contract interface JSON |
-| `--intent` | for single-domain | Path to workflow intent JSON |
-| `--topology` | for multi-domain | Path to topology configuration JSON |
+| `--intent` | for workflow validation | Path to workflow intent JSON |
+| `--topology` | for topology analysis and `route` | Path to topology configuration JSON |
+| `--tx` | for `route` | Path to transaction JSON (submitter and input contracts with their current synchronizer) |
 | `--json` | no | Machine-readable JSON output |
 | `--cert` | no | Certificate output path (default: `./ccre-cert.json`) |
 
-When `--topology` is provided, CCRE runs multi-domain topology analysis (CCRE-003). Without it, CCRE runs single-domain visibility and authorization checks.
+When `--topology` is provided, `validate` runs multi-synchronizer topology analysis (CCRE-003). Without it, `validate` runs workflow visibility and authorization checks. `route` exits with 0 when the transaction is routable and 1 when no synchronizer qualifies.
 
 ### Exit Codes
 
 | Code | Meaning |
 |------|---------|
-| 0 | SAFE / PASS |
-| 1 | UNSAFE / BLOCKED |
+| 0 | SAFE / PASS / ROUTABLE |
+| 1 | UNSAFE / BLOCKED / NO VALID SYNCHRONIZER |
 | 2 | UNSUPPORTED / WARNING |
 | 3 | INPUT_ERROR |
 | 4 | BINDING_ERROR |
@@ -218,21 +224,37 @@ When `--topology` is provided, CCRE runs multi-domain topology analysis (CCRE-00
 ```json
 {
   "version": "1.0",
-  "domains": [
-    { "id": "issuanceDomain" },
-    { "id": "settlementDomain" }
+  "synchronizers": [
+    { "id": "issuance-synchronizer" },
+    { "id": "settlement-synchronizer" }
   ],
   "participants": [
     {
       "id": "issuerNode",
-      "domains": ["issuanceDomain"],
+      "synchronizers": ["issuance-synchronizer"],
       "parties": ["Issuer"]
     },
     {
       "id": "investorNode",
-      "domains": ["issuanceDomain", "settlementDomain"],
+      "synchronizers": ["issuance-synchronizer", "settlement-synchronizer"],
       "parties": ["Investor"]
     }
+  ]
+}
+```
+
+Optional fields: `priority` on a synchronizer and `vettedPackages` on a participant (both used by `route`). Files that use the CCRE 0.1 field name `domains` are still accepted.
+
+**Transaction JSON** (`--tx`, for `route`):
+
+```json
+{
+  "version": "1.0",
+  "name": "Settle Amulet-for-Bond DvP",
+  "submitter": "Venue",
+  "inputs": [
+    { "template": "AmuletAllocation", "location": "global-synchronizer" },
+    { "template": "BondAllocation", "location": "bond-private-synchronizer" }
   ]
 }
 ```
@@ -257,13 +279,14 @@ When `--topology` is provided, CCRE runs multi-domain topology analysis (CCRE-00
 
 | Fixture | Mode | Result | Demonstrates |
 |---------|------|--------|-------------|
-| `topology-blocked/` | Multi-domain | BLOCKED | Issuer not hosted on settlementDomain — CCRE-003 |
-| `topology-pass/` | Multi-domain | PASS | All stakeholders hosted on all domains |
-| `passing/` | Single-domain | SAFE | Standard DvP — all checks pass |
-| `failing-visibility/` | Single-domain | UNSAFE | Actor cannot see target contract |
-| `failing-auth/` | Single-domain | UNSAFE | Actor is not a controller |
-| `fix-demo/` | Single-domain | UNSAFE → SAFE | Full detect → fix → verify cycle |
-| `unsupported-multi-controller/` | Single-domain | UNSUPPORTED | Multi-controller choice rejection |
+| `dvp-amulet/` | Routing | NO VALID SYNCHRONIZER → ROUTABLE | Canton Coin ↔ private-synchronizer DvP |
+| `topology-blocked/` | Topology | BLOCKED | Issuer not hosted on settlement-synchronizer — CCRE-003 |
+| `topology-pass/` | Topology | PASS | All stakeholders hosted on all synchronizers |
+| `passing/` | Workflow | SAFE | Standard DvP — all checks pass |
+| `failing-visibility/` | Workflow | UNSAFE | Actor cannot see target contract |
+| `failing-auth/` | Workflow | UNSAFE | Actor is not a controller |
+| `fix-demo/` | Workflow | UNSAFE → SAFE | Full detect → fix → verify cycle |
+| `unsupported-multi-controller/` | Workflow | UNSUPPORTED | Multi-controller choice rejection |
 
 ## Architecture
 
@@ -279,18 +302,18 @@ contracts.json + topology.json
     ┌────┴────┐
     │         │
     ▼         ▼
-  Single    Multi-domain
-  domain    (--topology)
+  Workflow  Topology
+  checks    analysis
     │         │
     ▼         ▼
   ┌──────┐  ┌──────────────┐
-  │Visi- │  │ Build party  │
-  │bility│  │ domain map   │
+  │Visi- │  │ Party →      │
+  │bility│  │ synchronizer │
   └──┬───┘  └──────┬───────┘
      ▼              ▼
   ┌──────┐  ┌──────────────┐
   │Auth  │  │ Infer exec   │
-  │      │  │ domains      │
+  │      │  │ synchronizers│
   └──┬───┘  └──────┬───────┘
      ▼              ▼
   ┌──────┐  ┌──────────────┐
@@ -304,13 +327,16 @@ contracts.json + topology.json
             └──────────────┘
 ```
 
+`route` shares the parser and evaluates each synchronizer against the transaction's inputs.
+
 ## Roadmap
 
-Milestone 1 (delivered) validates local correctness (visibility and authorization), which forms the foundation for topology-aware analysis. Milestone 2 extends this with the three core multi-domain checks against topology configuration:
+The next steps are proposed for funding in the Canton Dev Fund ([PR #142](https://github.com/canton-foundation/canton-dev-fund/pull/142)):
 
-- **M2:** CCRE-001 (cross-domain key ambiguity), CCRE-010 (cross-domain contract reference risk), interaction graph construction, reference-level cross-suppression
-- **M3:** Direct DAR parsing to eliminate manual contract interface definition
-- **M4:** Ecosystem adoption, production hardening, CI integration patterns
+- **M1 — Real inputs and routing checks:** DAR ingestion, topology export from a live participant, package-vetting (CCRE-020) and reassignment-feasibility (CCRE-011) checks, each blocking check reproduced on a two-synchronizer Canton 3.5 LocalNet
+- **M2 — Contract-key and cross-synchronizer reference safety:** CCRE-001 (Canton 3.5 non-unique contract-key hazards) and CCRE-010
+- **M3 — Distribution:** `dpm ccre` DPM component, GitHub Action, npm package
+- **M4 — Adoption:** teams running CCRE in CI on their own code and topology
 
 ## Running Tests
 
@@ -318,7 +344,7 @@ Milestone 1 (delivered) validates local correctness (visibility and authorizatio
 npm test
 ```
 
-23 tests across 5 test files. Covers single-domain validation (parser, resolver, pipeline, certificate) and multi-domain topology analysis (topology pipeline with CCRE-003 scenarios).
+29 tests across 6 test files. Covers workflow validation (parser, resolver, pipeline, certificate), multi-synchronizer topology analysis (CCRE-003 scenarios, legacy topology format) and the routing dry-run.
 
 ## License
 

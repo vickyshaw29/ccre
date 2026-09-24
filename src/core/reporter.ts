@@ -1,7 +1,7 @@
 import type { ValidationResult, Certificate } from "../types.js";
 import type { TopologyAnalysisResult } from "../types/topology.js";
 
-const VERSION = "0.1.0";
+import { VERSION } from "../version.js";
 const HEADER = `CCRE v${VERSION} — Pre-execution safety check for multi-app Canton workflows`;
 
 function formatViolation(v: {
@@ -145,8 +145,8 @@ export function formatTopologyTextReport(
   result: TopologyAnalysisResult,
 ): string {
   const lines: string[] = [
-    `CCRE v${VERSION} — Multi-domain topology analysis`,
-    `Analyzing: ${result.templateCount} templates across ${result.domainCount} domains`,
+    `CCRE v${VERSION} — Multi-synchronizer topology analysis`,
+    `Analyzing: ${result.templateCount} templates across ${result.synchronizerCount} synchronizers`,
     "",
   ];
 
@@ -155,8 +155,8 @@ export function formatTopologyTextReport(
     lines.push("");
     lines.push(result.summary);
     lines.push("");
-    lines.push("All stakeholders are reachable on all execution domains.");
-    lines.push("No multi-domain deployment risks detected.");
+    lines.push("All stakeholders are hosted on every synchronizer where their contracts can execute.");
+    lines.push("No multi-synchronizer deployment risks detected.");
   } else {
     lines.push(`DEPLOYMENT DECISION: ${result.deployment_decision}`);
     lines.push("");
@@ -166,7 +166,7 @@ export function formatTopologyTextReport(
     for (const f of result.findings) {
       lines.push(`[${f.severity}] ${f.check}: ${f.template}`);
       if (f.party) lines.push(`  Party: ${f.party}`);
-      if (f.domain) lines.push(`  Domain: ${f.domain}`);
+      if (f.synchronizer) lines.push(`  Synchronizer: ${f.synchronizer}`);
       lines.push(`  Issue: ${f.message}`);
       lines.push(`  Impact: ${f.impact}`);
       lines.push(`  Canton protocol: ${f.severity === "CRITICAL" ? "This operation WILL fail at runtime" : "This operation may produce unexpected results"}`);
@@ -174,14 +174,14 @@ export function formatTopologyTextReport(
     }
 
     if (result.deployment_decision === "BLOCKED") {
-      lines.push("Canton requires all stakeholders (signatories and observers) to be hosted on");
-      lines.push("every domain where a contract may execute. CCRE detected configurations where");
-      lines.push("this invariant is violated — these workflows will fail deterministically.");
+      lines.push("Canton requires every stakeholder (signatory and observer) of a contract to be hosted");
+      lines.push("on the synchronizer where it is created or to which it is reassigned. CCRE detected");
+      lines.push("configurations that violate this — workflows that need these contracts there will fail.");
     }
   }
 
   lines.push("");
-  lines.push(`${result.checksRun} checks across ${result.domainCount} domains, ${result.templateCount} templates`);
+  lines.push(`${result.checksRun} checks across ${result.synchronizerCount} synchronizers, ${result.templateCount} templates`);
 
   return lines.join("\n");
 }

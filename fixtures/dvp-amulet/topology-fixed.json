@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "domains": [
+  "synchronizers": [
     {
       "id": "global-synchronizer",
       "priority": 0
@@ -13,7 +13,7 @@
   "participants": [
     {
       "id": "sv-nodes",
-      "domains": [
+      "synchronizers": [
         "global-synchronizer"
       ],
       "parties": [
@@ -22,7 +22,7 @@
     },
     {
       "id": "buyer-node",
-      "domains": [
+      "synchronizers": [
         "global-synchronizer"
       ],
       "parties": [
@@ -31,7 +31,7 @@
     },
     {
       "id": "issuer-node",
-      "domains": [
+      "synchronizers": [
         "global-synchronizer",
         "bond-private-synchronizer"
       ],
@@ -41,7 +41,7 @@
     },
     {
       "id": "seller-node",
-      "domains": [
+      "synchronizers": [
         "global-synchronizer",
         "bond-private-synchronizer"
       ],
@@ -51,7 +51,7 @@
     },
     {
       "id": "venue-node",
-      "domains": [
+      "synchronizers": [
         "global-synchronizer",
         "bond-private-synchronizer"
       ],

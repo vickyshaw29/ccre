@@ -1,45 +1,45 @@
 import type { TopologyConfig } from "../schemas/topology.schema.js";
 import type { ContractModel } from "../schemas/contract.schema.js";
-import type { PartyDomainMap, TemplateDomainMap } from "../types/topology.js";
+import type { PartySynchronizerMap, TemplateSynchronizerMap } from "../types/topology.js";
 
-export function buildPartyDomainMap(topology: TopologyConfig): PartyDomainMap {
-  const map: PartyDomainMap = {};
+export function buildPartySynchronizerMap(topology: TopologyConfig): PartySynchronizerMap {
+  const map: PartySynchronizerMap = {};
   for (const participant of topology.participants) {
     for (const party of participant.parties) {
       if (!map[party]) {
         map[party] = new Set<string>();
       }
-      for (const domain of participant.domains) {
-        map[party].add(domain);
+      for (const synchronizer of participant.synchronizers) {
+        map[party].add(synchronizer);
       }
     }
   }
   return map;
 }
 
-export function inferExecutionDomains(
+export function inferExecutionSynchronizers(
   model: ContractModel,
-  partyDomainMap: PartyDomainMap,
-): TemplateDomainMap {
-  const templateDomains: TemplateDomainMap = {};
+  partySynchronizerMap: PartySynchronizerMap,
+): TemplateSynchronizerMap {
+  const templateSynchronizers: TemplateSynchronizerMap = {};
 
   for (const template of model.templates) {
-    const domains = new Set<string>();
+    const synchronizers = new Set<string>();
     const allStakeholders = [...template.signatories, ...template.observers];
 
     for (const stakeholder of allStakeholders) {
-      const partyDomains = partyDomainMap[stakeholder];
-      if (partyDomains) {
-        for (const d of partyDomains) {
-          domains.add(d);
+      const partySynchronizers = partySynchronizerMap[stakeholder];
+      if (partySynchronizers) {
+        for (const d of partySynchronizers) {
+          synchronizers.add(d);
         }
       }
     }
 
-    templateDomains[template.name] = domains;
+    templateSynchronizers[template.name] = synchronizers;
   }
 
-  return templateDomains;
+  return templateSynchronizers;
 }
 
 export function validateTopology(
@@ -47,17 +47,17 @@ export function validateTopology(
   model: ContractModel,
 ): string[] {
   const warnings: string[] = [];
-  const domainIds = new Set(topology.domains.map((d) => d.id));
+  const synchronizerIds = new Set(topology.synchronizers.map((d) => d.id));
   const topologyParties = new Set<string>();
 
   for (const participant of topology.participants) {
     for (const party of participant.parties) {
       topologyParties.add(party);
     }
-    for (const domain of participant.domains) {
-      if (!domainIds.has(domain)) {
+    for (const synchronizer of participant.synchronizers) {
+      if (!synchronizerIds.has(synchronizer)) {
         warnings.push(
-          `Participant '${participant.id}' references non-existent domain '${domain}'`,
+          `Participant '${participant.id}' references non-existent synchronizer '${synchronizer}'`,
         );
       }
     }
@@ -77,9 +77,9 @@ export function validateTopology(
     }
   }
 
-  if (domainIds.size < 2) {
+  if (synchronizerIds.size < 2) {
     warnings.push(
-      "Single-domain topology — no multi-domain risks. CCRE checks skipped.",
+      "Single-synchronizer topology — no multi-synchronizer risks. CCRE checks skipped.",
     );
   }
 

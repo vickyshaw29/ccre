@@ -7,7 +7,7 @@ export interface TopologyFinding {
   template: string;
   choice?: string;
   party?: string;
-  domain?: string;
+  synchronizer?: string;
   referencedTemplate?: string;
   message: string;
   impact: string;
@@ -18,15 +18,15 @@ export interface TopologyAnalysisResult {
   deployment_decision: DeploymentDecision;
   findings: TopologyFinding[];
   summary: string;
-  domainCount: number;
+  synchronizerCount: number;
   templateCount: number;
   checksRun: number;
 }
 
-export interface PartyDomainMap {
+export interface PartySynchronizerMap {
   [party: string]: Set<string>;
 }
 
-export interface TemplateDomainMap {
+export interface TemplateSynchronizerMap {
   [templateName: string]: Set<string>;
 }

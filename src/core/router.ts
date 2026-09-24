@@ -1,6 +1,7 @@
 import type { ContractModel, ContractTemplate } from "../schemas/contract.schema.js";
 import type { TopologyConfig, Participant } from "../schemas/topology.schema.js";
 import type { Transaction } from "../schemas/transaction.schema.js";
+import { VERSION } from "../version.js";
 
 // Static dry-run of Canton's synchronizer router.
 //
@@ -54,7 +55,7 @@ function hostingParticipants(
   synchronizer: string,
 ): Participant[] {
   return topology.participants.filter(
-    (p) => p.parties.includes(party) && p.domains.includes(synchronizer),
+    (p) => p.parties.includes(party) && p.synchronizers.includes(synchronizer),
   );
 }
 
@@ -76,7 +77,7 @@ function evaluate(
 ): SynchronizerEvaluation {
   const blockers: RoutingBlocker[] = [];
   const reassignments: Reassignment[] = [];
-  const knownSynchronizers = new Set(topology.domains.map((d) => d.id));
+  const knownSynchronizers = new Set(topology.synchronizers.map((d) => d.id));
 
   if (hostingParticipants(topology, tx.submitter, synchronizer).length === 0) {
     blockers.push({
@@ -132,8 +133,8 @@ function evaluate(
         const reassigning = topology.participants.some(
           (p) =>
             p.parties.includes(party) &&
-            p.domains.includes(input.location) &&
-            p.domains.includes(synchronizer),
+            p.synchronizers.includes(input.location) &&
+            p.synchronizers.includes(synchronizer),
         );
         if (!reassigning) {
           blockers.push({
@@ -156,7 +157,7 @@ export function dryRunRouting(
   topology: TopologyConfig,
   tx: Transaction,
 ): RoutingResult {
-  const evaluations = topology.domains.map((d) =>
+  const evaluations = topology.synchronizers.map((d) =>
     evaluate(model, topology, tx, d.id, d.priority ?? 0),
   );
 
@@ -181,7 +182,7 @@ export function dryRunRouting(
 
 export function formatRoutingTextReport(result: RoutingResult): string {
   const lines: string[] = [];
-  lines.push("CCRE v0.1.0 — Synchronizer routing dry-run");
+  lines.push(`CCRE v${VERSION} — Synchronizer routing dry-run`);
   lines.push(`Transaction: ${result.transaction}`);
   lines.push("");
 

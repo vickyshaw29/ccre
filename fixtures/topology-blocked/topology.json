@@ -1,28 +1,28 @@
 {
   "version": "1.0",
-  "domains": [
-    { "id": "issuanceDomain" },
-    { "id": "settlementDomain" }
+  "synchronizers": [
+    { "id": "issuance-synchronizer" },
+    { "id": "settlement-synchronizer" }
   ],
   "participants": [
     {
       "id": "issuerNode",
-      "domains": ["issuanceDomain"],
+      "synchronizers": ["issuance-synchronizer"],
       "parties": ["Issuer"]
     },
     {
       "id": "investorNode",
-      "domains": ["issuanceDomain", "settlementDomain"],
+      "synchronizers": ["issuance-synchronizer", "settlement-synchronizer"],
       "parties": ["Investor"]
     },
     {
       "id": "brokerNode",
-      "domains": ["settlementDomain"],
+      "synchronizers": ["settlement-synchronizer"],
       "parties": ["Broker"]
     },
     {
       "id": "regulatorNode",
-      "domains": ["issuanceDomain"],
+      "synchronizers": ["issuance-synchronizer"],
       "parties": ["Regulator"]
     }
   ]

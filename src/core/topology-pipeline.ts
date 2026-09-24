@@ -5,8 +5,8 @@ import type {
   DeploymentDecision,
 } from "../types/topology.js";
 import {
-  buildPartyDomainMap,
-  inferExecutionDomains,
+  buildPartySynchronizerMap,
+  inferExecutionSynchronizers,
   validateTopology,
 } from "./topology-resolver.js";
 import { validateStakeholderHosting } from "./validators/stakeholder-hosting.js";
@@ -16,26 +16,26 @@ export function runTopologyPipeline(
   topology: TopologyConfig,
 ): TopologyAnalysisResult {
   const warnings = validateTopology(topology, model);
-  const isSingleDomain = topology.domains.length < 2;
+  const isSingleSynchronizer = topology.synchronizers.length < 2;
 
-  if (isSingleDomain) {
+  if (isSingleSynchronizer) {
     return {
       deployment_decision: "PASS",
       findings: [],
       summary:
-        "Single-domain topology — no multi-domain risks detected",
-      domainCount: topology.domains.length,
+        "Single-synchronizer topology — no multi-synchronizer risks detected",
+      synchronizerCount: topology.synchronizers.length,
       templateCount: model.templates.length,
       checksRun: 0,
     };
   }
 
-  const partyDomainMap = buildPartyDomainMap(topology);
-  const templateDomains = inferExecutionDomains(model, partyDomainMap);
+  const partySynchronizerMap = buildPartySynchronizerMap(topology);
+  const templateSynchronizers = inferExecutionSynchronizers(model, partySynchronizerMap);
   const stakeholderFindings = validateStakeholderHosting(
     model,
-    partyDomainMap,
-    templateDomains,
+    partySynchronizerMap,
+    templateSynchronizers,
   );
 
   const allFindings = [...stakeholderFindings];
@@ -57,7 +57,7 @@ export function runTopologyPipeline(
     deployment_decision = "WARNING";
     summary = `${highCount} HIGH finding(s) — review recommended`;
   } else {
-    summary = `All checks passed across ${topology.domains.length} domains and ${model.templates.length} templates`;
+    summary = `All checks passed across ${topology.synchronizers.length} synchronizers and ${model.templates.length} templates`;
   }
 
   if (warnings.length > 0) {
@@ -68,7 +68,7 @@ export function runTopologyPipeline(
     deployment_decision,
     findings: allFindings,
     summary,
-    domainCount: topology.domains.length,
+    synchronizerCount: topology.synchronizers.length,
     templateCount: model.templates.length,
     checksRun: allFindings.length > 0 ? allFindings.length : model.templates.length,
   };

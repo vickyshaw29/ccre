@@ -37,13 +37,13 @@ const tx: Transaction = {
 function topology(issuerSyncs: string[]): TopologyConfig {
   return {
     version: "1.0",
-    domains: [{ id: "global" }, { id: "private" }],
+    synchronizers: [{ id: "global" }, { id: "private" }],
     participants: [
-      { id: "sv", domains: ["global"], parties: ["DSO"] },
-      { id: "buyer", domains: ["global"], parties: ["Buyer"] },
-      { id: "issuer", domains: issuerSyncs, parties: ["BondIssuer"] },
-      { id: "seller", domains: ["global", "private"], parties: ["Seller"] },
-      { id: "venue", domains: ["global", "private"], parties: ["Venue"] },
+      { id: "sv", synchronizers: ["global"], parties: ["DSO"] },
+      { id: "buyer", synchronizers: ["global"], parties: ["Buyer"] },
+      { id: "issuer", synchronizers: issuerSyncs, parties: ["BondIssuer"] },
+      { id: "seller", synchronizers: ["global", "private"], parties: ["Seller"] },
+      { id: "venue", synchronizers: ["global", "private"], parties: ["Venue"] },
     ],
   };
 }
@@ -93,9 +93,9 @@ describe("Synchronizer routing dry-run", () => {
   it("prefers higher priority, then fewer reassignments, then synchronizer id", () => {
     const everywhere: TopologyConfig = {
       version: "1.0",
-      domains: [{ id: "b" }, { id: "a" }, { id: "c", priority: 0 }],
+      synchronizers: [{ id: "b" }, { id: "a" }, { id: "c", priority: 0 }],
       participants: [
-        { id: "all", domains: ["a", "b", "c"], parties: ["DSO", "Buyer", "BondIssuer", "Seller", "Venue"] },
+        { id: "all", synchronizers: ["a", "b", "c"], parties: ["DSO", "Buyer", "BondIssuer", "Seller", "Venue"] },
       ],
     };
     const onB: Transaction = {
@@ -116,7 +116,7 @@ describe("Synchronizer routing dry-run", () => {
     };
     expect(dryRunRouting(model, everywhere, onMixed).selected).toBe("b");
 
-    everywhere.domains = [{ id: "b" }, { id: "a", priority: 10 }, { id: "c" }];
+    everywhere.synchronizers = [{ id: "b" }, { id: "a", priority: 10 }, { id: "c" }];
     expect(dryRunRouting(model, everywhere, onB).selected).toBe("a");
   });
 });

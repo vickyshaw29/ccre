@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { VERSION } from "../version.js";
 import { writeFileSync } from "node:fs";
 import type { Certificate, ValidationResult } from "../types.js";
 
@@ -36,7 +37,7 @@ export function generateCertificate(
   }
 
   return {
-    ccre_version: "0.1.0",
+    ccre_version: VERSION,
     verdict: "SAFE",
     confidence: "DETERMINISTIC_WITHIN_SCOPE",
     schema_hash: sha256(canonicalize(JSON.parse(schemaRaw))),

@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { runTopologyPipeline } from "../core/topology-pipeline.js";
 import type { ContractModel } from "../schemas/contract.schema.js";
-import type { TopologyConfig } from "../schemas/topology.schema.js";
+import { TopologyConfigSchema, type TopologyConfig } from "../schemas/topology.schema.js";
 
 describe("Topology Pipeline — CCRE-003 Stakeholder Hosting", () => {
-  it("detects key maintainer not hosted on execution domain", () => {
+  it("detects signatory not hosted on a synchronizer where the template can execute", () => {
     const model: ContractModel = {
       version: "1.0",
       templates: [
@@ -22,16 +22,16 @@ describe("Topology Pipeline — CCRE-003 Stakeholder Hosting", () => {
 
     const topology: TopologyConfig = {
       version: "1.0",
-      domains: [{ id: "tradingDomain" }, { id: "settlementDomain" }],
+      synchronizers: [{ id: "tradingSync" }, { id: "settlementSync" }],
       participants: [
         {
           id: "issuerNode",
-          domains: ["tradingDomain"],
+          synchronizers: ["tradingSync"],
           parties: ["issuer"],
         },
         {
           id: "custodianNode",
-          domains: ["tradingDomain", "settlementDomain"],
+          synchronizers: ["tradingSync", "settlementSync"],
           parties: ["custodian"],
         },
       ],
@@ -42,19 +42,19 @@ describe("Topology Pipeline — CCRE-003 Stakeholder Hosting", () => {
     expect(result.deployment_decision).toBe("BLOCKED");
     expect(result.findings.length).toBeGreaterThan(0);
 
-    const maintainerFinding = result.findings.find(
+    const signatoryFinding = result.findings.find(
       (f) =>
         f.check === "CCRE-003" &&
         f.party === "issuer" &&
-        f.domain === "settlementDomain",
+        f.synchronizer === "settlementSync",
     );
-    expect(maintainerFinding).toBeDefined();
-    expect(maintainerFinding!.severity).toBe("CRITICAL");
-    expect(maintainerFinding!.message).toContain("issuer");
-    expect(maintainerFinding!.message).toContain("settlementDomain");
+    expect(signatoryFinding).toBeDefined();
+    expect(signatoryFinding!.severity).toBe("CRITICAL");
+    expect(signatoryFinding!.message).toContain("Signatory 'issuer'");
+    expect(signatoryFinding!.message).toContain("settlementSync");
   });
 
-  it("passes when all stakeholders are hosted on all domains", () => {
+  it("passes when all stakeholders are hosted on all synchronizers", () => {
     const model: ContractModel = {
       version: "1.0",
       templates: [
@@ -72,16 +72,16 @@ describe("Topology Pipeline — CCRE-003 Stakeholder Hosting", () => {
 
     const topology: TopologyConfig = {
       version: "1.0",
-      domains: [{ id: "tradingDomain" }, { id: "settlementDomain" }],
+      synchronizers: [{ id: "tradingSync" }, { id: "settlementSync" }],
       participants: [
         {
           id: "issuerNode",
-          domains: ["tradingDomain", "settlementDomain"],
+          synchronizers: ["tradingSync", "settlementSync"],
           parties: ["issuer"],
         },
         {
           id: "custodianNode",
-          domains: ["tradingDomain", "settlementDomain"],
+          synchronizers: ["tradingSync", "settlementSync"],
           parties: ["custodian"],
         },
       ],
@@ -93,7 +93,7 @@ describe("Topology Pipeline — CCRE-003 Stakeholder Hosting", () => {
     expect(result.findings.length).toBe(0);
   });
 
-  it("skips checks on single-domain topology", () => {
+  it("skips checks on single-synchronizer topology", () => {
     const model: ContractModel = {
       version: "1.0",
       templates: [
@@ -111,11 +111,11 @@ describe("Topology Pipeline — CCRE-003 Stakeholder Hosting", () => {
 
     const topology: TopologyConfig = {
       version: "1.0",
-      domains: [{ id: "singleDomain" }],
+      synchronizers: [{ id: "singleSync" }],
       participants: [
         {
           id: "node1",
-          domains: ["singleDomain"],
+          synchronizers: ["singleSync"],
           parties: ["issuer", "custodian"],
         },
       ],
@@ -125,10 +125,10 @@ describe("Topology Pipeline — CCRE-003 Stakeholder Hosting", () => {
 
     expect(result.deployment_decision).toBe("PASS");
     expect(result.checksRun).toBe(0);
-    expect(result.summary).toContain("Single-domain");
+    expect(result.summary).toContain("Single-synchronizer");
   });
 
-  it("detects observer blocking reassignment", () => {
+  it("detects observer not hosted on a synchronizer", () => {
     const model: ContractModel = {
       version: "1.0",
       templates: [
@@ -146,16 +146,16 @@ describe("Topology Pipeline — CCRE-003 Stakeholder Hosting", () => {
 
     const topology: TopologyConfig = {
       version: "1.0",
-      domains: [{ id: "executionDomain" }, { id: "clearingDomain" }],
+      synchronizers: [{ id: "executionSync" }, { id: "clearingSync" }],
       participants: [
         {
           id: "brokerNode",
-          domains: ["executionDomain", "clearingDomain"],
+          synchronizers: ["executionSync", "clearingSync"],
           parties: ["broker"],
         },
         {
           id: "regulatorNode",
-          domains: ["executionDomain"],
+          synchronizers: ["executionSync"],
           parties: ["regulator"],
         },
       ],
@@ -169,10 +169,11 @@ describe("Topology Pipeline — CCRE-003 Stakeholder Hosting", () => {
       (f) =>
         f.check === "CCRE-003" &&
         f.party === "regulator" &&
-        f.domain === "clearingDomain",
+        f.synchronizer === "clearingSync",
     );
     expect(observerFinding).toBeDefined();
-    expect(observerFinding!.message).toContain("reassignment");
+    expect(observerFinding!.message).toContain("Observer 'regulator'");
+    expect(observerFinding!.impact).toContain("cannot be created on or reassigned to");
   });
 
   it("handles multiple templates with mixed findings", () => {
@@ -202,21 +203,21 @@ describe("Topology Pipeline — CCRE-003 Stakeholder Hosting", () => {
 
     const topology: TopologyConfig = {
       version: "1.0",
-      domains: [{ id: "domainA" }, { id: "domainB" }],
+      synchronizers: [{ id: "syncA" }, { id: "syncB" }],
       participants: [
         {
           id: "issuerNode",
-          domains: ["domainA", "domainB"],
+          synchronizers: ["syncA", "syncB"],
           parties: ["issuer"],
         },
         {
           id: "brokerNode",
-          domains: ["domainA", "domainB"],
+          synchronizers: ["syncA", "syncB"],
           parties: ["broker"],
         },
         {
           id: "auditorNode",
-          domains: ["domainA"],
+          synchronizers: ["syncA"],
           parties: ["auditor"],
         },
       ],
@@ -232,8 +233,21 @@ describe("Topology Pipeline — CCRE-003 Stakeholder Hosting", () => {
     expect(bondFindings.length).toBe(0);
 
     const auditorFinding = result.findings.find(
-      (f) => f.party === "auditor" && f.domain === "domainB",
+      (f) => f.party === "auditor" && f.synchronizer === "syncB",
     );
     expect(auditorFinding).toBeDefined();
+  });
+});
+
+describe("Topology schema", () => {
+  it("accepts legacy 'domains' fields from CCRE 0.1 topology files", () => {
+    const topology = TopologyConfigSchema.parse({
+      version: "1.0",
+      domains: [{ id: "syncA" }, { id: "syncB" }],
+      participants: [{ id: "node", domains: ["syncA", "syncB"], parties: ["issuer"] }],
+    });
+
+    expect(topology.synchronizers.map((s) => s.id)).toEqual(["syncA", "syncB"]);
+    expect(topology.participants[0].synchronizers).toEqual(["syncA", "syncB"]);
   });
 });
