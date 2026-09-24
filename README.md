@@ -118,6 +118,40 @@ RESULT: SAFE
 Certificate written to: ./ccre-cert.json
 ```
 
+## Synchronizer Routing Dry-Run: Canton Coin ↔ Private-Synchronizer DvP
+
+Canton executes each transaction on exactly one synchronizer. Its router picks a synchronizer that hosts every stakeholder of every input contract and has every input package vetted, reassigns inputs that live elsewhere, and breaks ties by priority, then fewest reassignments, then synchronizer id. `ccre route` runs that decision statically, before you submit.
+
+The fixture in `fixtures/dvp-amulet/` models an atomic DvP that settles a Canton Coin allocation against a bond allocation issued on a private synchronizer. Stakeholders follow the Splice templates (`AmuletAllocation` is signed by the instrument admin — the DSO — and the sender; the settlement venue is an observer). The contract model is hand-written from the Splice sources; direct DAR ingestion is on the roadmap.
+
+```bash
+npx tsx src/cli.ts route \
+  --schema fixtures/dvp-amulet/contracts.json \
+  --topology fixtures/dvp-amulet/topology-blocked.json \
+  --tx fixtures/dvp-amulet/settle-dvp.json
+```
+
+```
+ROUTING DECISION: NO VALID SYNCHRONIZER
+Canton will reject this submission. No synchronizer satisfies the routing constraints.
+
+[BLOCKED] global-synchronizer (priority 0, 1 reassignment(s))
+  - STAKEHOLDER_NOT_HOSTED: Stakeholder 'BondIssuer' of 'BondAllocation' is not hosted on 'global-synchronizer'
+  - NO_REASSIGNING_PARTICIPANT: No participant hosts 'BondIssuer' on both 'bond-private-synchronizer' and 'global-synchronizer' — 'BondAllocation' cannot be reassigned
+[BLOCKED] bond-private-synchronizer (priority 0, 1 reassignment(s))
+  - STAKEHOLDER_NOT_HOSTED: Stakeholder 'DSO' of 'AmuletAllocation' is not hosted on 'bond-private-synchronizer'
+  ...
+```
+
+The DSO party is hosted only by Super Validator nodes on the Global Synchronizer, so Canton Coin can never move to the private synchronizer. The only fix is for the bond issuer's participant to connect to the Global Synchronizer. With `topology-fixed.json`, CCRE confirms the route and the reassignment the router will perform:
+
+```
+ROUTING DECISION: ROUTABLE → global-synchronizer
+  reassign BondAllocation: bond-private-synchronizer → global-synchronizer
+```
+
+Participants may list `vettedPackages`, in which case the dry-run also blocks synchronizers where hosting participants have not vetted an input package. Synchronizers may set `priority`.
+
 ## What It Checks
 
 ### Multi-Domain Topology Analysis (`--topology`)

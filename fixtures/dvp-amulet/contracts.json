@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "templates": [
+    {
+      "name": "AmuletAllocation",
+      "packageId": "splice-amulet",
+      "signatories": ["DSO", "Buyer"],
+      "observers": ["Venue"],
+      "choices": [
+        { "name": "Allocation_ExecuteTransfer", "controllers": ["Venue"], "consuming": true }
+      ]
+    },
+    {
+      "name": "BondAllocation",
+      "packageId": "bond-registry",
+      "signatories": ["BondIssuer", "Seller"],
+      "observers": ["Venue"],
+      "choices": [
+        { "name": "Allocation_ExecuteTransfer", "controllers": ["Venue"], "consuming": true }
+      ]
+    }
+  ]
+}

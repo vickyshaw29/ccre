@@ -1,0 +1,63 @@
+{
+  "version": "1.0",
+  "domains": [
+    {
+      "id": "global-synchronizer",
+      "priority": 0
+    },
+    {
+      "id": "bond-private-synchronizer",
+      "priority": 0
+    }
+  ],
+  "participants": [
+    {
+      "id": "sv-nodes",
+      "domains": [
+        "global-synchronizer"
+      ],
+      "parties": [
+        "DSO"
+      ]
+    },
+    {
+      "id": "buyer-node",
+      "domains": [
+        "global-synchronizer"
+      ],
+      "parties": [
+        "Buyer"
+      ]
+    },
+    {
+      "id": "issuer-node",
+      "domains": [
+        "global-synchronizer",
+        "bond-private-synchronizer"
+      ],
+      "parties": [
+        "BondIssuer"
+      ]
+    },
+    {
+      "id": "seller-node",
+      "domains": [
+        "global-synchronizer",
+        "bond-private-synchronizer"
+      ],
+      "parties": [
+        "Seller"
+      ]
+    },
+    {
+      "id": "venue-node",
+      "domains": [
+        "global-synchronizer",
+        "bond-private-synchronizer"
+      ],
+      "parties": [
+        "Venue"
+      ]
+    }
+  ]
+}

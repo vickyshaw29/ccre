@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "name": "Settle Amulet-for-Bond DvP (both allocations executed atomically by the venue)",
+  "submitter": "Venue",
+  "inputs": [
+    { "template": "AmuletAllocation", "location": "global-synchronizer" },
+    { "template": "BondAllocation", "location": "bond-private-synchronizer" }
+  ]
+}
